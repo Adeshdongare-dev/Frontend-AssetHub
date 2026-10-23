@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import {
   Code2, Plus, Search, Filter, Pencil, Eye, Calendar, RefreshCcw, IndianRupee,
-  AlertTriangle, CheckCircle2, FileText, ExternalLink, UserCheck, ShieldCheck, Sparkles, X, Upload
+  AlertTriangle, CheckCircle2, FileText, ExternalLink, UserCheck, ShieldCheck, Sparkles, X, Upload,
+  Mail, Send
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import Modal from '../components/Modal';
@@ -22,6 +23,8 @@ export default function SoftwareServices() {
     addSoftware,
     updateSoftware,
     deleteSoftware,
+    checkSoftwareExpirations,
+    sendSoftwareReminder,
   } = useData();
 
   const [search, setSearch] = useState('');
@@ -33,6 +36,62 @@ export default function SoftwareServices() {
   const [editingItem, setEditingItem] = useState(null);
   const [viewingItem, setViewingItem] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingAlerts, setIsSendingAlerts] = useState(false);
+  const [sendingSingleId, setSendingSingleId] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+
+  const getDaysLeft = (dateStr) => {
+    if (!dateStr) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(dateStr);
+    target.setHours(0, 0, 0, 0);
+    return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+  };
+
+  async function handleTriggerAlerts() {
+    try {
+      setIsSendingAlerts(true);
+      const res = await checkSoftwareExpirations();
+      setFeedback({
+        type: 'success',
+        message: res.message || '7-day software expiration email check completed successfully.',
+      });
+      setTimeout(() => setFeedback(null), 6000);
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: err.response?.data?.message || err.message || 'Failed to send email alerts. Check SMTP configuration in appsettings.json.',
+      });
+      setTimeout(() => setFeedback(null), 8000);
+    } finally {
+      setIsSendingAlerts(false);
+    }
+  }
+
+  async function handleSendSingleReminder(item) {
+    if (!window.confirm(`Send an email reminder for "${item.serviceName}" to management and responsible person (${item.responsiblePersonName || 'assigned'})?`)) {
+      return;
+    }
+
+    try {
+      setSendingSingleId(item.id);
+      const res = await sendSoftwareReminder(item.id);
+      setFeedback({
+        type: 'success',
+        message: res.message || `Reminder email for ${item.serviceName} sent successfully.`,
+      });
+      setTimeout(() => setFeedback(null), 6000);
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: err.response?.data?.message || err.message || 'Failed to send reminder email. Check SMTP settings.',
+      });
+      setTimeout(() => setFeedback(null), 8000);
+    } finally {
+      setSendingSingleId(null);
+    }
+  }
 
   const [form, setForm] = useState({
     assetCode: '',
@@ -75,7 +134,7 @@ export default function SoftwareServices() {
       if (!s.nextRenewalDate && !s.expiryDate) return false;
       const targetDate = new Date(s.nextRenewalDate || s.expiryDate);
       const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
-      return diffDays >= 0 && diffDays <= 30;
+      return diffDays >= 0 && diffDays <= 7;
     }).length;
 
     const monthlySpend = softwareList.reduce((sum, s) => {
@@ -90,12 +149,43 @@ export default function SoftwareServices() {
     return { total, active, expiringSoon, monthlySpend };
   }, [softwareList]);
 
+  // Subscriptions expiring or renewal due in <= 7 days
+  const expiringIn7Days = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return softwareList.filter((s) => {
+      if (s.status !== 'Active') return false;
+
+      const isWithin7Days = (dateStr) => {
+        if (!dateStr) return false;
+        const target = new Date(dateStr);
+        target.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays <= 7;
+      };
+
+      return isWithin7Days(s.expiryDate) || isWithin7Days(s.nextRenewalDate);
+    });
+  }, [softwareList]);
+
   function openAddModal() {
-    const nextCode = `SW-${String(softwareList.length + 1).padStart(5, '0')}`;
+    // OLD CODE (COMMENTED OUT):
+    // const nextCode = `SW-${String(softwareList.length + 1).padStart(5, '0')}`;
+    // setForm({
+    //   assetCode: nextCode,
+    //   serviceName: '',
+    //   category: activeCategories[0]?.name || 'Software',
+
+    const initialCategory = activeCategories[0]?.name || 'Software';
+    const catObj = categories.find((c) => c.name === initialCategory);
+    const prefix = catObj?.prefix ? catObj.prefix.toUpperCase() : 'SW';
+    const nextCode = `${prefix}-${String(softwareList.length + 1).padStart(5, '0')}`;
+
     setForm({
       assetCode: nextCode,
       serviceName: '',
-      category: activeCategories[0]?.name || 'Software',
+      category: initialCategory,
       vendorId: '',
       vendorName: '',
       vendorPortalUrl: '',
@@ -270,19 +360,43 @@ export default function SoftwareServices() {
       label: 'Next Renewal',
       header: 'Next Renewal',
       accessor: 'nextRenewalDate',
-      render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Calendar size={14} className="muted-text" />
-          <span>{r.nextRenewalDate || '—'}</span>
-        </div>
-      ),
+      render: (r) => {
+        const days = getDaysLeft(r.nextRenewalDate);
+        const isUrgent = days !== null && days >= 0 && days <= 7;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Calendar size={14} className="muted-text" />
+              <span>{r.nextRenewalDate || '—'}</span>
+            </div>
+            {isUrgent && (
+              <span style={{ fontSize: '11px', color: '#b45309', background: '#fef3c7', padding: '1px 6px', borderRadius: '4px', width: 'fit-content', fontWeight: 600 }}>
+                Due in {days}d
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'expiryDate',
       label: 'Expiry Date',
       header: 'Expiry Date',
       accessor: 'expiryDate',
-      render: (r) => <span>{r.expiryDate || '—'}</span>,
+      render: (r) => {
+        const days = getDaysLeft(r.expiryDate);
+        const isUrgent = days !== null && days >= 0 && days <= 7;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span>{r.expiryDate || '—'}</span>
+            {isUrgent && (
+              <span style={{ fontSize: '11px', color: '#b91c1c', background: '#fee2e2', padding: '1px 6px', borderRadius: '4px', width: 'fit-content', fontWeight: 600 }}>
+                Expires in {days}d
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'amount',
@@ -324,7 +438,16 @@ export default function SoftwareServices() {
       header: 'Actions',
       accessor: 'actions',
       render: (r) => (
-        <div className="action-row" style={{ justifyContent: 'flex-end' }}>
+        <div className="action-row" style={{ justifyContent: 'flex-end', gap: '4px' }}>
+          <button
+            className="icon-btn"
+            title="Send email reminder to management"
+            disabled={sendingSingleId === r.id}
+            onClick={() => handleSendSingleReminder(r)}
+            style={{ color: '#4f46e5' }}
+          >
+            <Mail size={15} />
+          </button>
           <button className="icon-btn" title="View details" onClick={() => setViewingItem(r)}>
             <Eye size={15} />
           </button>
@@ -343,10 +466,96 @@ export default function SoftwareServices() {
           <h1>Software Services &amp; Subscriptions</h1>
           <p className="page-sub">Manage software licenses, SaaS applications, broadband Wi-Fi bills, and recurring cloud accounts.</p>
         </div>
-        <button className="btn btn-primary" onClick={openAddModal}>
-          <Plus size={16} /> Add Software Service
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={handleTriggerAlerts}
+            disabled={isSendingAlerts}
+            title="Check all software subscriptions and send email alerts for those expiring or due in 7 days"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Mail size={15} />
+            {isSendingAlerts ? 'Sending Alerts…' : 'Send 7-Day Alerts'}
+          </button>
+          <button className="btn btn-primary" onClick={openAddModal}>
+            <Plus size={16} /> Add Software Service
+          </button>
+        </div>
       </div>
+
+      {/* Action Feedback Banner */}
+      {feedback && (
+        <div
+          style={{
+            padding: '12px 16px',
+            marginBottom: '16px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: feedback.type === 'success' ? '#ecfdf5' : '#fef2f2',
+            border: `1px solid ${feedback.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
+            color: feedback.type === 'success' ? '#065f46' : '#991b1b',
+            fontSize: '14px',
+          }}
+        >
+          <span>{feedback.message}</span>
+          <button
+            onClick={() => setFeedback(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* 7-Day Expiry / Renewal Notice Banner */}
+      {expiringIn7Days.length > 0 && (
+        <div
+          style={{
+            padding: '14px 18px',
+            marginBottom: '18px',
+            borderRadius: '8px',
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <AlertTriangle size={22} color="#d97706" />
+            <div>
+              <div style={{ fontWeight: 600, color: '#92400e', fontSize: '14px' }}>
+                {expiringIn7Days.length} Software Service{expiringIn7Days.length > 1 ? 's' : ''} Expiring or Due Within 7 Days
+              </div>
+              <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>
+                Daily automatic emails are running in background, or you can send immediate alerts to management.
+              </div>
+            </div>
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={handleTriggerAlerts}
+            disabled={isSendingAlerts}
+            style={{
+              borderColor: '#f59e0b',
+              color: '#92400e',
+              background: '#ffffff',
+              fontSize: '13px',
+              padding: '6px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Send size={14} />
+            {isSendingAlerts ? 'Sending…' : 'Send Reminders Now'}
+          </button>
+        </div>
+      )}
 
       {/* Metrics Header */}
       <div className="report-summary-cards">
@@ -370,7 +579,7 @@ export default function SoftwareServices() {
           <div className="report-summary-card-icon tone-orange"><AlertTriangle size={20} /></div>
           <div className="report-summary-card-body">
             <div className="report-summary-card-val">{metrics.expiringSoon}</div>
-            <div className="report-summary-card-title">Expiring / Due Soon (30 days)</div>
+            <div className="report-summary-card-title">Expiring / Due Soon (7 days)</div>
           </div>
         </div>
 
@@ -449,7 +658,19 @@ export default function SoftwareServices() {
             <select
               value={form.category}
               onChange={(e) => {
-                setForm({ ...form, category: e.target.value });
+                const selectedCat = e.target.value;
+                // OLD CODE (COMMENTED OUT):
+                // setForm({ ...form, category: e.target.value });
+
+                const catObj = categories.find((c) => c.name === selectedCat);
+                const prefix = catObj?.prefix ? catObj.prefix.toUpperCase() : 'SW';
+                const nextCode = `${prefix}-${String(softwareList.length + 1).padStart(5, '0')}`;
+
+                setForm((prev) => ({
+                  ...prev,
+                  category: selectedCat,
+                  assetCode: editingItem ? prev.assetCode : nextCode,
+                }));
                 if (formErrors.category) setFormErrors((prev) => ({ ...prev, category: '' }));
               }}
               className={formErrors.category ? 'input-error' : ''}

@@ -4,7 +4,8 @@ import { useData } from '../context/DataContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
-import { LOCATION_LIST } from '../data/mockData';
+// CURRENT LOGIC (COMMENTED OUT):
+// import { LOCATION_LIST } from '../data/mockData';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -31,7 +32,10 @@ function blankForm(defaultCategory) {
     purchaseCost: '',
     warrantyStartDate: todayISO(),
     warrantyEndDate: '',
-    location: 'Pune - Kharadi HQ',
+    // CURRENT LOGIC (COMMENTED OUT):
+    // location: 'Pune - Kharadi HQ',
+    // NEW LOGIC: Empty by default so user can type or choose dynamically
+    location: '',
     invoiceNo: '',
     poNumber: '',
     description: '',
@@ -52,9 +56,24 @@ function blankForm(defaultCategory) {
 }
 
 export default function Inventory() {
-  const { inventoryBatches, vendors, categories, assets, addInventoryBatch, updateInventoryBatch, deleteInventoryBatch } = useData();
+  const { inventoryBatches, vendors, categories, assets, employees, addInventoryBatch, updateInventoryBatch, deleteInventoryBatch } = useData();
   const activeCategories = useMemo(() => categories.filter((c) => c.status === 'Active'), [categories]);
   const defaultCategory = activeCategories[0]?.name || 'Laptop';
+
+  // Dynamic location list fetched from Database records (inventoryBatches, assets, employees)
+  const dbLocations = useMemo(() => {
+    const set = new Set();
+    (inventoryBatches || []).forEach((b) => {
+      if (b.location && b.location.trim()) set.add(b.location.trim());
+    });
+    (assets || []).forEach((a) => {
+      if (a.location && a.location.trim()) set.add(a.location.trim());
+    });
+    (employees || []).forEach((e) => {
+      if (e.location && e.location.trim()) set.add(e.location.trim());
+    });
+    return Array.from(set).sort();
+  }, [inventoryBatches, assets, employees]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState(null);
@@ -147,7 +166,10 @@ export default function Inventory() {
       vendorId: item.vendorId || '',
       warrantyStartDate: item.warrantyStartDate || item.purchaseDate || '',
       warrantyEndDate: item.warrantyEndDate || item.warrantyExpiry || '',
-      location: item.location || 'Pune - Kharadi HQ',
+      // CURRENT LOGIC (COMMENTED OUT):
+      // location: item.location || 'Pune - Kharadi HQ',
+      // NEW LOGIC:
+      location: item.location || '',
       condition: item.condition || 'New',
       status: item.status || 'Available',
       invoiceNo: item.invoiceNo || '',
@@ -675,7 +697,8 @@ export default function Inventory() {
             />
           </div>
 
-          {/* 12. Location (Dropdown, Required: No) */}
+          {/* 12. Location (Manual Type + DB Suggestions) */}
+          {/* CURRENT LOGIC (COMMENTED OUT):
           <div className="form-field">
             <label>Location</label>
             <select
@@ -687,6 +710,24 @@ export default function Inventory() {
                 <option key={loc} value={loc}>{loc}</option>
               ))}
             </select>
+          </div>
+          */}
+
+          {/* NEW LOGIC: Manual typing supported + dropdown suggestions fetched from Database */}
+          <div className="form-field">
+            <label>Location</label>
+            <input
+              type="text"
+              list="db-inventory-locations"
+              placeholder="Type or select location…"
+              value={form.location}
+              onChange={(e) => setForm({ ...form, location: e.target.value })}
+            />
+            <datalist id="db-inventory-locations">
+              {dbLocations.map((loc) => (
+                <option key={loc} value={loc} />
+              ))}
+            </datalist>
           </div>
 
           {/* 13. Invoice Number (Text, Required: Yes) */}

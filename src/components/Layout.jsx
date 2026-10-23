@@ -1,8 +1,8 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutGrid, Boxes, PackagePlus, Truck, Users, BarChart3, LogOut, ChevronDown, Hexagon, Tag, Database, Code2, Monitor,
+  LayoutGrid, Boxes, PackagePlus, Truck, Users, BarChart3, LogOut, ChevronDown, Hexagon, Tag, Database, Code2, Monitor, Menu, X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Layout() {
@@ -10,8 +10,16 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assetsOpen, setAssetsOpen] = useState(true);
   const [masterOpen, setMasterOpen] = useState(true);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  const closeSidebar = () => setSidebarOpen(false);
 
   const isAssetsActive = location.pathname.startsWith('/assets') || location.pathname.startsWith('/software-services');
   const isMasterActive = location.pathname.startsWith('/categories') || location.pathname.startsWith('/vendors');
@@ -23,17 +31,27 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      {/* Mobile backdrop overlay */}
+      {sidebarOpen && (
+        <div className="sidebar-backdrop" onClick={closeSidebar} />
+      )}
+
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="brand">
-          <div className="brand-mark"><Hexagon size={20} strokeWidth={2.5} /></div>
-          <div>
-            <div className="brand-name">Asset Management</div>
-            <div className="brand-sub">IT Asset Management</div>
+          <div className="brand-left">
+            <div className="brand-mark"><Hexagon size={20} strokeWidth={2.5} /></div>
+            <div>
+              <div className="brand-name">Asset Management</div>
+              <div className="brand-sub">IT Asset Management</div>
+            </div>
           </div>
+          <button className="sidebar-close-btn" onClick={closeSidebar} aria-label="Close Sidebar">
+            <X size={18} />
+          </button>
         </div>
 
         <nav className="side-nav">
-          <NavLink to="/" end className={({ isActive }) => `side-link ${isActive ? 'active' : ''}`}>
+          <NavLink to="/" end className={({ isActive }) => `side-link ${isActive ? 'active' : ''}`} onClick={closeSidebar}>
             <LayoutGrid size={18} strokeWidth={2} />
             <span>Dashboard</span>
           </NavLink>
@@ -57,6 +75,7 @@ export default function Layout() {
                 <NavLink
                   to="/assets"
                   className={({ isActive }) => `side-sub-link ${isActive ? 'active' : ''}`}
+                  onClick={closeSidebar}
                 >
                   <Monitor size={15} strokeWidth={2} />
                   <span>Hardware Assets</span>
@@ -65,6 +84,7 @@ export default function Layout() {
                 <NavLink
                   to="/software-services"
                   className={({ isActive }) => `side-sub-link ${isActive ? 'active' : ''}`}
+                  onClick={closeSidebar}
                 >
                   <Code2 size={15} strokeWidth={2} />
                   <span>Software Services</span>
@@ -73,7 +93,7 @@ export default function Layout() {
             )}
           </div>
 
-          <NavLink to="/inventory" className={({ isActive }) => `side-link ${isActive ? 'active' : ''}`}>
+          <NavLink to="/inventory" className={({ isActive }) => `side-link ${isActive ? 'active' : ''}`} onClick={closeSidebar}>
             <PackagePlus size={18} strokeWidth={2} />
             <span>Inventory</span>
           </NavLink>
@@ -97,6 +117,7 @@ export default function Layout() {
                 <NavLink
                   to="/categories"
                   className={({ isActive }) => `side-sub-link ${isActive ? 'active' : ''}`}
+                  onClick={closeSidebar}
                 >
                   <Tag size={15} strokeWidth={2} />
                   <span>Categories</span>
@@ -105,6 +126,7 @@ export default function Layout() {
                 <NavLink
                   to="/vendors"
                   className={({ isActive }) => `side-sub-link ${isActive ? 'active' : ''}`}
+                  onClick={closeSidebar}
                 >
                   <Truck size={15} strokeWidth={2} />
                   <span>Vendors</span>
@@ -113,30 +135,36 @@ export default function Layout() {
             )}
           </div>
 
-          <NavLink to="/employees" className={({ isActive }) => `side-link ${isActive ? 'active' : ''}`}>
+          <NavLink to="/employees" className={({ isActive }) => `side-link ${isActive ? 'active' : ''}`} onClick={closeSidebar}>
             <Users size={18} strokeWidth={2} />
             <span>Employees</span>
           </NavLink>
 
-          <NavLink to="/reports" className={({ isActive }) => `side-link ${isActive ? 'active' : ''}`}>
+          <NavLink to="/reports" className={({ isActive }) => `side-link ${isActive ? 'active' : ''}`} onClick={closeSidebar}>
             <BarChart3 size={18} strokeWidth={2} />
             <span>Reports</span>
           </NavLink>
         </nav>
-
-        
       </aside>
 
       <div className="main-col">
         <header className="topbar">
-          <div className="topbar-title">IT Asset &amp; Infrastructure Management</div>
+          <div className="topbar-left">
+            <button
+              className="mobile-menu-btn"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open Navigation Menu"
+            >
+              <Menu size={22} />
+            </button>
+            <div className="topbar-title">IT Asset &amp; Infrastructure Management</div>
+          </div>
           <div className="topbar-right">
             <div className="user-menu">
               <button className="user-chip" onClick={() => setMenuOpen((o) => !o)}>
                 <span className="avatar">{user?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2)}</span>
                 <span className="user-info">
                   <span className="user-name">{user?.name}</span>
-                  {/* <span className="user-role">{user?.role}</span> */}
                 </span>
                 <ChevronDown size={15} />
               </button>

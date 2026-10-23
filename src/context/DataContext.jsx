@@ -338,7 +338,9 @@ export function DataProvider({ children }) {
     const catObj = categories.find((c) => c.name?.trim().toLowerCase() === catName.trim().toLowerCase());
     const catPrefix = catObj?.prefix;
     const catAssetsCount = assets.filter((a) => a.category?.trim().toLowerCase() === catName.trim().toLowerCase()).length;
-    const rawTargetId = assetData.id || assetData.assetId || (base.id && !base.id.startsWith("LAP-") ? base.id : "") || base.assetId || generateAssetTag(catName, catPrefix, catAssetsCount);
+    // const rawTargetId = assetData.id || assetData.assetId || (base.id && !base.id.startsWith("LAP-") ? base.id : "") || base.assetId || generateAssetTag(catName, catPrefix, catAssetsCount);
+    const rawTargetId = base.id || base.assetId || assetData.id || assetData.assetId || generateAssetTag(catName, catPrefix, catAssetsCount);
+
     const cleanId = cleanAssetId(rawTargetId, catName, categories);
     const isFromInventory = Boolean(assetData.fromInventory || base.fromInventory || base.batchId || assetData.batchId || base.inventoryBatchId || assetData.inventoryBatchId);
     const finalAsset = {
@@ -1198,6 +1200,28 @@ export function DataProvider({ children }) {
     }
   }
 
+  async function checkSoftwareExpirations() {
+    try {
+      const res = await api.software.checkExpirations();
+      logActivity("Triggered manual 7-day software expiration email check.");
+      return res;
+    } catch (err) {
+      console.error("Failed to trigger software expiration check:", err);
+      throw err;
+    }
+  }
+
+  async function sendSoftwareReminder(id) {
+    try {
+      const res = await api.software.sendReminder(id);
+      logActivity(`Sent manual reminder email for software subscription ${id}.`);
+      return res;
+    } catch (err) {
+      console.error(`Failed to send reminder for software subscription ${id}:`, err);
+      throw err;
+    }
+  }
+
   const value = useMemo(
     () => ({
       categories,
@@ -1235,6 +1259,8 @@ export function DataProvider({ children }) {
       addSoftware,
       updateSoftware,
       deleteSoftware,
+      checkSoftwareExpirations,
+      sendSoftwareReminder,
       logActivity,
     }),
     [

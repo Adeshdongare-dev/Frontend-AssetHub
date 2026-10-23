@@ -282,11 +282,37 @@ export default function AssetDetailDrawer({ asset, onClose }) {
   const warrantyDays = hasWarranty && warrantyEndDate !== '—' ? daysUntil(warrantyEndDate) : null;
   const warrantyTone = warrantyDays === null ? 'muted' : warrantyDays < 0 ? 'danger' : warrantyDays <= 60 ? 'warning' : 'success';
 
-  const itemTitle = asset.item
-    || (typeof asset.configuration === 'object' && asset.configuration?.brandModel ? asset.configuration.brandModel : asset.category);
+    // 1. Parse configuration safely
+  let configObj = null;
+  if (typeof asset.configuration === 'object' && asset.configuration !== null) {
+    configObj = asset.configuration;
+  } else if (typeof asset.configuration === 'string' && asset.configuration.trim()) {
+    try {
+      configObj = JSON.parse(asset.configuration);
+    } catch {
+      configObj = null;
+    }
+  }
 
+  // 2. Extract parts from ConfigSummary (e.g. "Mobile · LAVA · 4GB")
+  const summaryParts = (asset.configSummary || '')
+    .split(/[·•]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // 3. Define itemTitle
+  const itemTitle = asset.item
+    || asset.itemName
+    || configObj?.brandModel
+    || configObj?.item
+    || (summaryParts.length >= 1 ? summaryParts[0] : asset.category);
+
+  // 4. Define brandTitle
   const brandTitle = asset.brand
-    || (typeof asset.configuration === 'object' && asset.configuration?.brandModel ? String(asset.configuration.brandModel).split(' ')[0] : '—');
+    || configObj?.brand
+    || configObj?.Brand
+    || (configObj && Object.entries(configObj).find(([k]) => k.toLowerCase() === 'brand')?.[1])
+    || (summaryParts.length >= 2 ? summaryParts[1] : '—');
 
   const configText = (typeof asset.configuration === 'string' && asset.configuration.trim())
     ? asset.configuration

@@ -62,6 +62,7 @@ export default function Assets() {
     employees,
     categories,
     vendors,
+    inventoryBatches,
     addInventoryBatch,
     addAsset,
     assignAsset,
@@ -78,6 +79,21 @@ export default function Assets() {
   const navigate = useNavigate();
 
   const [selectedAsset, setSelectedAsset] = useState(null);
+
+  // Dynamic location list fetched from Database records (inventoryBatches, assets, employees)
+  const dbLocations = useMemo(() => {
+    const set = new Set();
+    (inventoryBatches || []).forEach((b) => {
+      if (b.location && b.location.trim()) set.add(b.location.trim());
+    });
+    (assets || []).forEach((a) => {
+      if (a.location && a.location.trim()) set.add(a.location.trim());
+    });
+    (employees || []).forEach((e) => {
+      if (e.location && e.location.trim()) set.add(e.location.trim());
+    });
+    return Array.from(set).sort();
+  }, [inventoryBatches, assets, employees]);
   const [actionMenuFor, setActionMenuFor] = useState(null);
   const [assignModal, setAssignModal] = useState(null);
   const [transferModal, setTransferModal] = useState(null);
@@ -405,6 +421,7 @@ export default function Assets() {
       key: "item",
       label: "Item",
       width: "20%",
+      /* OLD CODE (COMMENTED OUT):
       render: (r) => {
         const val =
           r.item ||
@@ -412,6 +429,15 @@ export default function Assets() {
             ? r.configuration.brandModel
             : r.category);
         return <b>{val || "—"}</b>;
+      },
+      */
+      render: (r) => {
+        const val =
+          r.item ||
+          (typeof r.configuration === "object" && r.configuration?.brandModel
+            ? r.configuration.brandModel
+            : r.category) || "—";
+        return <b className="item-cell" title={val}>{val}</b>;
       },
     },
     {
@@ -914,6 +940,7 @@ export default function Assets() {
             </div>
             <div className="form-field">
               <label>Location</label>
+              {/* CURRENT LOGIC (COMMENTED OUT):
               <select
                 value={editForm.location}
                 onChange={(e) =>
@@ -925,6 +952,23 @@ export default function Assets() {
                   <option key={loc} value={loc}>{loc}</option>
                 ))}
               </select>
+              */}
+
+              {/* NEW LOGIC: Manual typing supported + dropdown suggestions fetched from Database */}
+              <input
+                type="text"
+                list="db-asset-locations"
+                placeholder="Type or select location…"
+                value={editForm.location}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, location: e.target.value })
+                }
+              />
+              <datalist id="db-asset-locations">
+                {dbLocations.map((loc) => (
+                  <option key={loc} value={loc} />
+                ))}
+              </datalist>
             </div>
             <div className="form-field form-field-full">
               <label>Notes</label>

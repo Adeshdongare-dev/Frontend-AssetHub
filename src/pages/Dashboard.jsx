@@ -752,7 +752,7 @@ export default function Dashboard() {
       if (!s.nextRenewalDate && !s.expiryDate) return false;
       const targetDate = new Date(s.nextRenewalDate || s.expiryDate);
       const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
-      return diffDays >= 0 && diffDays <= 30;
+      return diffDays >= 0 && diffDays <= 7;
     }).length;
 
     const monthlySpend = softwareList.reduce((sum, s) => {
@@ -904,10 +904,10 @@ export default function Dashboard() {
           if (!s.nextRenewalDate && !s.expiryDate) return false;
           const targetDate = new Date(s.nextRenewalDate || s.expiryDate);
           const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
-          return diffDays >= 0 && diffDays <= 30;
+          return diffDays >= 0 && diffDays <= 7;
         }),
-        title: 'Expiring / Due Soon Subscriptions (30 days)',
-        subtitle: 'Showing software subscriptions due for renewal in the next 30 days.',
+        title: 'Expiring / Due Soon Subscriptions (7 days)',
+        subtitle: 'Showing software subscriptions due for renewal in the next 7 days.',
         filename: 'Dashboard_Expiring_Software_Subscriptions',
         sheetName: 'Expiring Subscriptions',
         isSoftware: true,
@@ -1322,7 +1322,7 @@ export default function Dashboard() {
           <div className="report-summary-card-icon tone-orange"><AlertTriangle size={20} /></div>
           <div className="report-summary-card-body">
             <div className="report-summary-card-val">{softwareMetrics.expiringSoon}</div>
-            <div className="report-summary-card-title">Expiring / Due Soon (30 days)</div>
+            <div className="report-summary-card-title">Expiring / Due Soon (7 days)</div>
           </div>
         </div>
 

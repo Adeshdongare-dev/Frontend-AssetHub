@@ -186,6 +186,8 @@ export const api = {
     create: (data) => apiClient.post('/software', data),
     update: (id, data) => apiClient.put(`/software/${id}`, data),
     delete: (id) => apiClient.delete(`/software/${id}`),
+    checkExpirations: () => apiClient.post('/software/check-expirations'),
+    sendReminder: (id) => apiClient.post(`/software/${id}/send-reminder`),
   },
 };
 

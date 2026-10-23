@@ -24,8 +24,19 @@
 .brand {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 11px;
   padding: 6px 8px 26px;
+}
+
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.sidebar-close-btn {
+  display: none;
 }
 
 .brand-mark {
@@ -235,6 +246,20 @@
   position: sticky;
   top: 0;
   z-index: 20;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-menu-btn {
+  display: none;
+}
+
+.sidebar-backdrop {
+  display: none;
 }
 
 .topbar-title {
@@ -1096,6 +1121,14 @@ button.btn:has(svg.lucide-download):hover {
   -webkit-box-orient: vertical;
   overflow: hidden;
   max-width: 260px;
+}
+
+.item-cell {
+  display: block;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .link-cell {
@@ -2463,9 +2496,28 @@ button.btn:has(svg.lucide-download):hover {
 }
 
 /* =========================================================
-   RESPONSIVE
+   RESPONSIVE DESIGN (TABLET & MOBILE)
+   Laptop / Desktop (> 1024px) remains completely untouched!
    ========================================================= */
-@media (max-width: 1100px) {
+
+/* --- TABLET BREAKPOINT (max-width: 1024px) --- */
+@media (max-width: 1024px) {
+  .content-area {
+    padding: 20px 20px 48px;
+  }
+
+  .report-summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
   }
@@ -2475,20 +2527,258 @@ button.btn:has(svg.lucide-download):hover {
   }
 }
 
-@media (max-width: 760px) {
+/* --- MOBILE & SMALL TABLET BREAKPOINT (max-width: 768px) --- */
+@media (max-width: 768px) {
+  /* 1. Mobile Hamburger Menu & Close Buttons */
+  .mobile-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ink);
+    padding: 6px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+  }
+
+  .mobile-menu-btn:hover {
+    background: var(--bg-alt);
+  }
+
+  .sidebar-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+  }
+
+  .sidebar-close-btn:hover {
+    background: var(--bg-alt);
+    color: var(--ink);
+  }
+
+  /* 2. Off-Canvas Sliding Sidebar */
   .sidebar {
     position: fixed;
-    z-index: 50;
+    top: 0;
+    left: 0;
+    width: 280px;
+    max-width: 85vw;
+    height: 100vh;
+    z-index: 100;
+    background: var(--surface);
     transform: translateX(-100%);
-    transition: transform 0.2s ease;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 8px 0 32px rgba(15, 23, 42, 0.2);
+    overflow-y: auto;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* 3. Dark Backdrop Overlay */
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 95;
+    animation: fadeIn 0.2s ease;
+  }
+
+  /* 4. Topbar & Header */
+  .topbar {
+    height: 58px;
+    padding: 0 16px;
+  }
+
+  .topbar-title {
+    font-size: 13.5px;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .user-chip {
+    padding: 3px 6px;
+  }
+
+  .user-chip .user-info {
+    display: none;
   }
 
   .content-area {
-    padding: 18px 14px 40px;
+    padding: 14px 12px 36px;
   }
 
+  /* 5. Page Header & Actions */
   .page-head {
     flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .page-head h1 {
+    font-size: 20px;
+  }
+
+  .page-head > div:last-child {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .page-head .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .report-summary-cards {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* 6. Modals (Add / Update / Delete Dialogs) */
+  .modal-overlay {
+    padding: 8px;
+    align-items: flex-end;
+  }
+
+  .modal-panel {
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 94vh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .modal-header {
+    padding: 16px 18px 12px;
+  }
+
+  .modal-body {
+    padding: 16px 18px;
+    max-height: calc(94vh - 120px);
+  }
+
+  .modal-footer {
+    padding: 12px 18px;
+    flex-direction: column-reverse;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* 7. Forms on Mobile (Full Width Inputs + Prevent iOS Zoom) */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    font-size: 16px;
+    min-height: 42px;
+  }
+
+  /* 8. Table Responsiveness - Clean layout, NO overlapping text! */
+  .table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-scroll .data-table,
+  .table-scroll .data-table.assets-table {
+    width: max-content !important;
+    min-width: 100% !important;
+    table-layout: auto !important;
+  }
+
+  .table-scroll .data-table th,
+  .table-scroll .data-table td {
+    white-space: nowrap !important;
+    min-width: 120px !important;
+    padding: 12px 16px !important;
+  }
+
+  .table-scroll .data-table th:first-child,
+  .table-scroll .data-table td:first-child {
+    min-width: 130px !important;
+  }
+
+  .table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .table-toolbar .search-box {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .table-toolbar-right {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .table-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .table-footer-right {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Sticky Actions Column on Mobile: View, Edit, Delete are always visible without horizontal scroll */
+  .data-table th:last-child,
+  .data-table td:last-child {
+    position: sticky;
+    right: 0;
+    background: #ffffff !important;
+    z-index: 2;
+    min-width: 90px !important;
+    box-shadow: -6px 0 10px rgba(0, 0, 0, 0.06);
+  }
+
+  /* 9. Detail Drawer (View 360) on Mobile */
+  .drawer-panel {
+    width: 100vw !important;
+  }
+
+  .drawer-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 16px;
   }
 }
 
